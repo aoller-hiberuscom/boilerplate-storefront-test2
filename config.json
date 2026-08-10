@@ -1,13 +1,13 @@
 {
   "public": {
     "default": {
-      "commerce-core-endpoint": "https://na1-sandbox.api.commerce.adobe.com/CrVQT4ZJfV3v1cry59pWjR/graphql",
       "commerce-endpoint": "https://na1-sandbox.api.commerce.adobe.com/CrVQT4ZJfV3v1cry59pWjR/graphql",
+      "adobe-commerce-optimizer": true,
       "headers": {
         "cs": {
-          "ac-view-id": "2178baf6-a1e0-48e0-b1a8-dca35d7c7670",
-          "ac-price-book-id": "west_coast_inc",
-          "ac-source-locale": "en-US"
+          "ac-view-id": "646ddeb8-e457-46fe-bdc1-f683ceb89098",
+          "ac-price-book-id": "base",
+          "ac-source-locale": "default"
         }
       }
     }
