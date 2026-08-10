@@ -2,7 +2,6 @@
   "public": {
     "default": {
       "commerce-endpoint": "https://na1-sandbox.api.commerce.adobe.com/CrVQT4ZJfV3v1cry59pWjR/graphql",
-      "commerce-core-endpoint": "https://magento-sample.local/graphql",
       "adobe-commerce-optimizer": true,
       "headers": {
         "cs": {
