@@ -2,7 +2,6 @@
   "public": {
     "default": {
       "commerce-endpoint": "https://na1-sandbox.api.commerce.adobe.com/CrVQT4ZJfV3v1cry59pWjR/graphql",
-      "commerce-core-endpoint": "https://www.aemshop.net/graphql",
       "adobe-commerce-optimizer": true,
       "headers": {
         "cs": {
@@ -13,7 +12,7 @@
       },
       "plugins": {
         "picker": {
-          "rootCategory": "Gear"
+          "rootCategory": "2"
         }
       }
     }
