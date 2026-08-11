@@ -9,6 +9,11 @@
           "ac-price-book-id": "base",
           "ac-source-locale": "default"
         }
+      },
+      "plugins": {
+        "picker": {
+          "rootCategory": "2"
+        }
       }
     }
   }
