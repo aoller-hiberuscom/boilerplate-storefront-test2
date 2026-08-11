@@ -12,7 +12,7 @@
       },
       "plugins": {
         "picker": {
-          "rootCategory": "3"
+          "rootCategory": "4"
         }
       }
     }
