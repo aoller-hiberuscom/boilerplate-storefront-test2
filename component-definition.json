@@ -571,6 +571,23 @@
               "type": "key-value-block"
             }
           }
+        },
+        {
+          "title": "ACO Category",
+          "id": "aco-category",
+          "model": "aco-category",
+          "plugins": {
+            "da": {
+              "rows": 1,
+              "columns": 1,
+              "fields": [
+                {
+                  "name": "categoryId",
+                  "selector": "div>div"
+                }
+              ]
+            }
+          }
         }
       ]
     },
