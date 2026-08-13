@@ -1,0 +1,9 @@
+.aco-category .aco-category-info {
+    padding: 16px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.aco-category .aco-category-info strong {
+    margin-right: 8px;
+}

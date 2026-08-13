@@ -180,6 +180,18 @@
     ]
   },
   {
+    "id": "aco-category",
+    "fields": [
+      {
+        "component": "text",
+        "name": "categoryId",
+        "label": "Category ID",
+        "value": "",
+        "valueType": "string"
+      }
+    ]
+  },
+  {
     "id": "card",
     "fields": [
       {
