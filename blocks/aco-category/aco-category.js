@@ -3,6 +3,7 @@ export default function decorate(block) {
 
   if (!valueCell) return;
 
+  // Primero recuperamos el valor generado por DA.
   const categoryId = valueCell.textContent.trim();
 
   const info = document.createElement('div');
@@ -16,5 +17,7 @@ export default function decorate(block) {
 
   info.append(label, value);
 
-  block.append(info);
+  // Eliminamos la estructura original del bloque
+  // y dejamos únicamente el HTML decorado.
+  block.replaceChildren(info);
 }
