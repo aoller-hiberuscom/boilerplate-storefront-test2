@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>ACO Category Picker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    data:,
+    /tools/aco-picker/aco-picker.css
+
+    /tools/aco-picker/aco-picker.jsscript>
+</head>
+<body>
+<main class="aco-picker">
+    <header class="aco-picker__header">
+        <h1>ACO Category Picker</h1>
+        <p>Busca una categoría de ACO e insértala en el documento de DA.live.</p>
+    </header>
+
+    <section class="aco-picker__form">
+        <label>
+            <span>Family</span>
+            <input id="family" type="text" placeholder="main-catalog">
+        </label>
+
+        <label>
+            <span>Buscar categoría</span>
+            <input id="search" type="search" placeholder="Ej: shoes, women, sale...">
+        </label>
+
+        <button id="searchBtn" type="button">Buscar</button>
+    </section>
+
+    <p id="status">Introduce al menos 3 caracteres para buscar.</p>
+
+    <ul id="results" class="aco-picker__results"></ul>
+</main>
+</body>
+</html>
