@@ -23,9 +23,9 @@
       "id": "aco-category",
       "fields": [
         {
-          "component": "text",
+          "component": "hiberus:aco-category-picker",
           "name": "categoryId",
-          "label": "Category ID",
+          "label": "Category",
           "value": "",
           "valueType": "string"
         }
