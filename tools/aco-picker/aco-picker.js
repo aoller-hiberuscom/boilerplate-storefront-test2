@@ -1,20 +1,14 @@
-let actions = {
-  sendHTML(html) {
-    console.log('DA SDK no disponible. HTML que se insertaria:', html);
-  },
-  closeLibrary() {
-    console.log('DA SDK no disponible. closeLibrary ignorado.');
-  },
-};
+import DA_SDK from 'https://da.live/nx/utils/sdk.js';
+
+let actions = null;
 
 try {
-  const module = await import('https://da.live/nx/utils/sdk.js');
-  const sdk = await module.default;
+  const sdk = await DA_SDK;
   actions = sdk.actions;
-  console.log('DA SDK cargado correctamente.');
+  console.log('DA SDK cargado correctamente.', sdk.context);
 } catch (error) {
   console.warn(
-    'DA SDK no disponible. Esto es normal si abres el picker fuera de DA.live.',
+    'DA SDK no disponible. Abre el picker desde DA.live para insertar contenido.',
     error,
   );
 }
@@ -159,6 +153,12 @@ function renderResults(categories) {
 
       console.log('Insertando categoria:', category);
       console.log('HTML generado:', html);
+
+      if (!actions) {
+        console.log('Fuera de DA.live: HTML que se insertaría:', html);
+        setStatus('Selección correcta. Abre el picker desde DA.live para insertarla.');
+        return;
+      }
 
       actions.sendHTML(html);
       actions.closeLibrary();
