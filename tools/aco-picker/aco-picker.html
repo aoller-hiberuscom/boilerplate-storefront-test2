@@ -3,41 +3,65 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <title>ACO Category Picker</title>
+
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/tools/aco-picker/aco-picker.css">
 
-  <!-- DA App SDK -->
-  <script src="https://da.live/nx/utils/sdk.js" type="module"></script>
+  <script
+          src="https://da.live/nx/utils/sdk.js"
+          type="module">
+  </script>
 
-  <!-- Picker -->
-  <script src="/tools/aco-picker/aco-picker.js" type="module"></script>
+  <script
+          src="/tools/aco-picker/aco-picker.js"
+          type="module">
+  </script>
 </head>
+
 <body>
-  <main class="aco-picker">
-    <header class="aco-picker__header">
-      <h1>ACO Category Picker</h1>
-      <p>Busca una categoría de ACO e insértala en el documento de DA.live.</p>
-    </header>
+<main class="aco-picker">
 
-    <section class="aco-picker__form">
-      <label class="aco-picker__field" for="search">
-        <span>Buscar categoría</span>
-        <input
-          id="search"
-          type="search"
-          placeholder="Ej: shoe, women, sale..."
-          autocomplete="off"
-        >
-      </label>
+  <header class="aco-picker__header">
+    <h1>ACO Category Picker</h1>
 
-      <button id="searchBtn" class="aco-picker__button" type="button">
-        Buscar
-      </button>
-    </section>
+    <p>
+      Busca una categoría de ACO e insértala en el documento de DA.live.
+    </p>
+  </header>
 
-    <p id="status" class="aco-picker__status">Inicializando…</p>
-    <ul id="results" class="aco-picker__results"></ul>
-  </main>
+  <section class="aco-picker__form">
+
+    <label class="aco-picker__field" for="search">
+      <span>Buscar categoría</span>
+
+      <input
+              id="search"
+              type="search"
+              placeholder="Ej: shoe, women, sale..."
+              autocomplete="off"
+      >
+    </label>
+
+    <button
+            id="searchBtn"
+            class="aco-picker__button"
+            type="button">
+      Buscar
+    </button>
+
+  </section>
+
+  <p id="status" class="aco-picker__status">
+    Inicializando…
+  </p>
+
+  <ul
+          id="results"
+          class="aco-picker__results">
+  </ul>
+
+</main>
 </body>
 </html>
