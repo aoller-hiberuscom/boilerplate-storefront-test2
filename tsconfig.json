@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@dropins/*": ["scripts/__dropins__/*"]
+    },
+    "types": [],
+    "skipLibCheck": true,
+    "strict": false,
+    "noImplicitThis": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": [
+    "scripts/aem.d.ts",
+    "scripts/types/**/*.d.ts",
+    "scripts/core/**/*.js",
+    "scripts/domain/**/*.js",
+    "scripts/dropins/**/*.js",
+    "scripts/ui/**/*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "scripts/__dropins__",
+    "scripts/acdl",
+    "cypress"
+  ]
+}

@@ -4,6 +4,14 @@
 
 The Header block provides the main navigation and commerce functionality for the site. It includes responsive navigation with dropdown menus, authentication (sign in/sign out), wishlist access, mini cart with lazy loading, and product search with live results. The block handles both desktop and mobile layouts with hamburger menu support and manages various interactive panels.
 
+## Architecture (refactored)
+
+- `header.js` — orchestrator: seller-assisted banner, nav fragment load, module composition.
+- `nav.js` — nav structure (brand/sections/tools), submenus and keyboard accessibility.
+- `panels.js` — wishlist, mini-cart and search tool panels with shared loading-state handling.
+- `renderAuthCombine.js` / `renderAuthDropdown.js` — both auth UIs preserved (client decision), texts via placeholders with identical fallbacks.
+- `renderSellerAssistedBuyingBanner.js` — seller-assisted session banner.
+
 ## Integration
 
 ### Block Configuration

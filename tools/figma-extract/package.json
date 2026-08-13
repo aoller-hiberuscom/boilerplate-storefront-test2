@@ -1,0 +1,11 @@
+{
+  "name": "figma-extract",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Extracts the design-system foundations from the Figma file into docs/design-system/extract.json",
+  "scripts": {
+    "extract": "node --max-old-space-size=6144 extract.mjs"
+  },
+  "license": "Apache-2.0"
+}

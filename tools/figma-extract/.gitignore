@@ -1,0 +1,2 @@
+# Build input: the full Figma document dump (~360 MB). Regenerate with `npm run extract`.
+figma-full.json

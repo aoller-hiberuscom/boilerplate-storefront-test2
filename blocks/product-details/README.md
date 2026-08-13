@@ -4,6 +4,14 @@
 
 The Product Details block provides comprehensive product detail page functionality using multiple @dropins/storefront-pdp containers. It handles product display, configuration, cart operations, wishlist integration, and SEO optimization with dynamic mode switching between add and update operations.
 
+## Architecture (refactored)
+
+- `product-details.js` — layout (`data-ref`), PDP container mounting and event wiring.
+- `add-to-cart.js` — add-to-cart/update button logic, validation, alerts and cart redirect.
+- `gallery.js` — gallery configs (mobile/desktop derived from a shared base) and image slots.
+- SEO (JSON-LD + meta tags) lives in `scripts/domain/seo.js`.
+- Commerce capabilities declared via `ensureCapability('pdp'|'cart'|'wishlist')`.
+
 ## Integration
 
 <!-- ### Block Configuration

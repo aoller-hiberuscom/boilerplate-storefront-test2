@@ -1,3 +1,9 @@
+/**
+ * scripts.js — Orquestador EDS de la página (eager → lazy → delayed).
+ *
+ * Única capa autorizada a coordinar core + domain + dropins + ui.
+ * Ver docs/ARQUITECTURA-FRONTEND.md.
+ */
 import {
   buildBlock,
   loadHeader,
@@ -10,17 +16,23 @@ import {
   loadSections,
   loadCSS,
 } from './aem.js';
-import {
-  loadCommerceEager,
-  loadCommerceLazy,
-  initializeCommerce,
-  applyTemplates,
-  decorateLinks,
-  loadErrorPage,
-  decorateSections,
-  IS_UE,
-  IS_DA,
-} from './commerce.js';
+import { IS_UE, IS_DA } from './core/env.js';
+import { initializeCommerce, detectPageType, notifyUI } from './core/lifecycle.js';
+import { decorateSections, applyTemplates } from './core/decoration.js';
+import { decorateLinks } from './core/routes.js';
+import { getPageLocale } from './core/i18n.js';
+import { loadErrorPage } from './core/error.js';
+import { logger } from './core/logger.js';
+import { SESSION_KEYS } from './core/storage.js';
+import { initializeAdobeDataLayer, trackHistory } from './domain/analytics.js';
+import bootGlobalDropins, { mountPageCapabilities } from './dropins/registry.js';
+import { autolinkModals } from './ui/modal.js';
+
+/** Código de error usado cuando falla la inicialización de commerce. */
+const COMMERCE_INIT_ERROR_CODE = 418;
+
+/** Retardo de la fase delayed (ms). */
+const DELAYED_PHASE_MS = 3000;
 
 /**
  * Builds hero block and prepends to main in a new section.
@@ -47,7 +59,9 @@ function buildHeroBlock(main) {
 async function loadFonts() {
   await loadCSS(`${window.hlx.codeBasePath}/styles/fonts.css`);
   try {
-    if (!window.location.hostname.includes('localhost')) sessionStorage.setItem('fonts-loaded', 'true');
+    if (!window.location.hostname.includes('localhost')) {
+      sessionStorage.setItem(SESSION_KEYS.FONTS_LOADED, 'true');
+    }
   } catch (e) {
     // do nothing
   }
@@ -70,8 +84,7 @@ function buildAutoBlocks(main) {
             const frag = await loadFragment(pathname);
             fragment.parentElement.replaceWith(...frag.children);
           } catch (error) {
-            // eslint-disable-next-line no-console
-            console.error('Fragment loading failed', error);
+            logger.error('Fragment loading failed', error);
           }
         });
       });
@@ -79,7 +92,7 @@ function buildAutoBlocks(main) {
 
     if (!main.querySelector('.hero')) buildHeroBlock(main);
   } catch (error) {
-    console.error('Auto Blocking failed', error);
+    logger.error('Auto Blocking failed', error);
   }
 }
 
@@ -136,23 +149,37 @@ export function decorateMain(main) {
 }
 
 /**
+ * Fase eager de commerce: tipo de página → data layer → capacidades → LCP.
+ * @returns {Promise<void>}
+ */
+async function loadCommerceEager() {
+  const pageType = detectPageType();
+  initializeAdobeDataLayer(pageType);
+  await mountPageCapabilities(pageType);
+  notifyUI('lcp');
+}
+
+/**
  * Loads everything needed to get to LCP.
  * @param {Element} doc The container element
  */
 async function loadEager(doc) {
-  document.documentElement.lang = 'en';
+  document.documentElement.lang = getPageLocale();
   decorateTemplateAndTheme();
 
   const main = doc.querySelector('main');
   if (main) {
     try {
       await initializeCommerce();
+      await bootGlobalDropins();
+      // el locale puede venir del config del store, disponible tras initializeCommerce
+      document.documentElement.lang = getPageLocale();
       decorateMain(main);
       applyTemplates(doc);
       await loadCommerceEager();
     } catch (e) {
-      console.error('Error initializing commerce configuration:', e);
-      loadErrorPage(418);
+      logger.error('Error initializing commerce configuration:', e);
+      loadErrorPage(COMMERCE_INIT_ERROR_CODE);
     }
     document.body.classList.add('appear');
     await loadSection(main.querySelector('.section'), waitForFirstImage);
@@ -160,7 +187,7 @@ async function loadEager(doc) {
 
   try {
     /* if desktop (proxy for fast connection) or fonts already loaded, load fonts.css */
-    if (window.innerWidth >= 900 || sessionStorage.getItem('fonts-loaded')) {
+    if (window.innerWidth >= 900 || sessionStorage.getItem(SESSION_KEYS.FONTS_LOADED)) {
       loadFonts();
     }
   } catch (e) {
@@ -184,7 +211,9 @@ async function loadLazy(doc) {
 
   loadFooter(doc.querySelector('footer'));
 
-  loadCommerceLazy();
+  // fase lazy de commerce: modales + data layer + historial
+  autolinkModals(doc);
+  import('./acdl/adobe-client-data-layer.min.js').then(() => trackHistory());
 
   loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
   loadFonts();
@@ -195,7 +224,7 @@ async function loadLazy(doc) {
  * without impacting the user experience.
  */
 function loadDelayed() {
-  window.setTimeout(() => import('./delayed.js'), 3000);
+  window.setTimeout(() => import('./delayed.js'), DELAYED_PHASE_MS);
   // load anything that can be postponed to the latest here
 }
 

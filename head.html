@@ -35,6 +35,10 @@
 
 <link rel="stylesheet" href="/styles/styles.css" />
 
+<link rel="preload" href="/fonts/Bethebest-Regular.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high" />
+<link rel="preload" href="/fonts/Bethebest-Bold.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high" />
+<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+
 <script nonce="aem" type="module">
     if (!(HTMLScriptElement.supports?.('importmap'))) {
         import('/scripts/__dropins__/tools/shims/importmap.js');
@@ -49,6 +53,11 @@
 <link rel="modulepreload" href="/scripts/initializers/index.js" />
 <link rel="modulepreload" href="/scripts/initializers/auth.js" />
 <link rel="modulepreload" href="/scripts/initializers/personalization.js" />
+<link rel="modulepreload" href="/scripts/dropins/registry.js" />
+<link rel="modulepreload" href="/scripts/dropins/create-initializer.js" />
+<link rel="modulepreload" href="/scripts/dropins/initializers/auth.js" />
+<link rel="modulepreload" href="/scripts/dropins/initializers/personalization.js" />
+<link rel="modulepreload" href="/scripts/core/lifecycle.js" />
 <link rel="modulepreload" href="/scripts/__dropins__/storefront-auth/api.js" />
 <link rel="modulepreload" href="/scripts/__dropins__/tools/event-bus.js" />
 <link rel="modulepreload" href="/scripts/__dropins__/tools/fetch-graphql.js" />

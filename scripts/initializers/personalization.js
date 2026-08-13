@@ -1,12 +1,9 @@
-import { initializers } from '@dropins/tools/initializer.js';
-import { initialize, setEndpoint } from '@dropins/storefront-personalization/api.js';
-import { initializeDropin } from './index.js';
-import { CORE_FETCH_GRAPHQL } from '../commerce.js';
+/**
+ * @deprecated Shim de compatibilidad con blocks aún no migrados.
+ * En código nuevo, declarar la dependencia con:
+ *   import { ensureCapability } from '../dropins/registry.js';
+ *   await ensureCapability('personalization');
+ */
+import { ensureCapability } from '../dropins/registry.js';
 
-await initializeDropin(async () => {
-  // Set Fetch GraphQL (Catalog Service)
-  setEndpoint(CORE_FETCH_GRAPHQL);
-
-  // Initialize personalization
-  return initializers.mountImmediately(initialize, {});
-})();
+await ensureCapability('personalization');

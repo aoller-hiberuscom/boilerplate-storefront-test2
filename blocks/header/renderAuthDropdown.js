@@ -1,12 +1,40 @@
-import { getCookie } from '@dropins/tools/lib.js';
+/**
+ * blocks/header/renderAuthDropdown.js — Interfaz de auth "dropdown" del header.
+ *
+ * Responsabilidad:
+ *  - Panel desplegable de login (.nav-auth-menu-panel) en .nav-tools con el
+ *    formulario SignIn del dropin de auth y el menú de usuario autenticado.
+ *  - Logout con redirecciones por sección y actualización del botón (icono
+ *    de cuenta ↔ saludo "Hi, {name}").
+ *
+ * Se conserva junto a renderAuthCombine.js por decisión del cliente: ambas
+ * interfaces de autenticación conviven en el header.
+ */
 import * as authApi from '@dropins/storefront-auth/api.js';
 import { render as authRenderer } from '@dropins/storefront-auth/render.js';
 import { SignIn } from '@dropins/storefront-auth/containers/SignIn.js';
 import {
+  CUSTOMER_PATH,
+  CUSTOMER_ACCOUNT_PATH,
+  CUSTOMER_LOGIN_PATH,
   CUSTOMER_FORGOTPASSWORD_PATH,
+  ORDER_DETAILS_PATH,
   rootLink,
-} from '../../scripts/commerce.js';
+} from '../../scripts/core/routes.js';
+import { getUserTokenCookie } from '../../scripts/core/auth.js';
+import { COOKIES, getCookie } from '../../scripts/core/storage.js';
+import { fetchPlaceholders } from '../../scripts/core/i18n.js';
 
+const labels = await fetchPlaceholders();
+
+/** Lookup de placeholder con fallback idéntico al texto original en inglés. */
+const t = (key, fallback) => labels?.Global?.[key] ?? fallback;
+
+/**
+ * Redirige tras el logout según la sección actual, o recarga la página si
+ * ninguna ruta coincide.
+ * @param {Record<string, string>} redirections Mapa "path actual" → destino
+ */
 function handleLogout(redirections) {
   const shouldRedirect = Object.entries(redirections).some(([currentPath, redirectPath]) => {
     if (window.location.pathname.includes(currentPath)) {
@@ -22,6 +50,7 @@ function handleLogout(redirections) {
   }
 }
 
+/** Renderiza el formulario SignIn del dropin dentro del panel. */
 function renderSignIn(element) {
   authRenderer.render(SignIn, {
     onSuccessCallback: () => {
@@ -33,6 +62,10 @@ function renderSignIn(element) {
   })(element);
 }
 
+/**
+ * Monta la interfaz auth "dropdown" en las herramientas del nav.
+ * @param {Element} navTools Contenedor .nav-tools del nav
+ */
 export function renderAuthDropdown(navTools) {
   const dropdownElement = document.createRange().createContextualFragment(`
  <div class="dropdown-wrapper nav-tools-wrapper">
@@ -40,8 +73,8 @@ export function renderAuthDropdown(navTools) {
     <div class="nav-auth-menu-panel nav-tools-panel">
       <div id="auth-dropin-container"></div>
       <ul class="authenticated-user-menu">
-         <li><a href="${rootLink('/customer/account')}">My Account</a></li>
-          <li><button>Logout</button></li>
+         <li><a href="${rootLink(CUSTOMER_ACCOUNT_PATH)}">${t('AuthMyAccount', 'My Account')}</a></li>
+          <li><button>${t('AuthLogout', 'Logout')}</button></li>
       </ul>
     </div>
  </div>`);
@@ -85,21 +118,23 @@ export function renderAuthDropdown(navTools) {
     await authApi.revokeCustomerToken();
     handleLogout({
       '/checkout': rootLink('/cart'),
-      '/customer': rootLink('/customer/login'),
-      '/order-details': rootLink('/'),
+      [CUSTOMER_PATH]: rootLink(CUSTOMER_LOGIN_PATH),
+      [ORDER_DETAILS_PATH]: rootLink('/'),
     });
   });
 
   renderSignIn(authDropinContainer);
 
   const updateDropDownUI = (isAuthenticated) => {
-    const getUserTokenCookie = getCookie('auth_dropin_user_token');
-    const getUserNameCookie = getCookie('auth_dropin_firstname');
+    const userTokenCookie = getUserTokenCookie();
+    const userNameCookie = getCookie(COOKIES.AUTH_FIRSTNAME);
 
-    if (isAuthenticated || getUserTokenCookie) {
+    if (isAuthenticated || userTokenCookie) {
+      // Estilos inline de estado (mostrar/ocultar): el CSS del header no los
+      // cubre, se conservan tal cual para mantener el comportamiento 1:1.
       authDropDownMenuList.style.display = 'block';
       authDropinContainer.style.display = 'none';
-      loginButton.textContent = `Hi, ${getUserNameCookie}`;
+      loginButton.textContent = t('AuthGreeting', 'Hi, {name}').replace('{name}', userNameCookie);
     } else {
       authDropDownMenuList.style.display = 'none';
       authDropinContainer.style.display = 'block';
@@ -108,7 +143,7 @@ export function renderAuthDropdown(navTools) {
           width="25"
           height="25"
           viewBox="0 0 24 24"
-          aria-label="My Account"
+          aria-label="${t('AuthMyAccount', 'My Account')}"
           >
           <g fill="none" stroke="#000000" stroke-width="1.5">
           <circle cx="12" cy="6" r="4"></circle>

@@ -3,20 +3,17 @@ import { render as authRenderer } from '@dropins/storefront-auth/render.js';
 import {
   CUSTOMER_ACCOUNT_PATH,
   CUSTOMER_FORGOTPASSWORD_PATH,
-  checkIsAuthenticated,
   rootLink,
-} from '../../scripts/commerce.js';
-
-// Initialize
-import '../../scripts/initializers/auth.js';
+} from '../../scripts/core/routes.js';
+import { mountDropinBlock } from '../../scripts/ui/dropin-block.js';
 
 export default async function decorate(block) {
-  if (checkIsAuthenticated()) {
-    window.location.href = rootLink(CUSTOMER_ACCOUNT_PATH);
-  } else {
-    await authRenderer.render(SignIn, {
+  await mountDropinBlock(block, {
+    capability: 'auth',
+    guard: 'guest',
+    render: () => authRenderer.render(SignIn, {
       routeForgotPassword: () => rootLink(CUSTOMER_FORGOTPASSWORD_PATH),
       routeRedirectOnSignIn: () => rootLink(CUSTOMER_ACCOUNT_PATH),
-    })(block);
-  }
+    })(block),
+  });
 }

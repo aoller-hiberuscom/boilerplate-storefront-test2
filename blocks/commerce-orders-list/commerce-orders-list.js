@@ -1,41 +1,29 @@
 import { render as accountRenderer } from '@dropins/storefront-account/render.js';
 import { OrdersList } from '@dropins/storefront-account/containers/OrdersList.js';
-import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
 import { readBlockConfig } from '../../scripts/aem.js';
 import {
-  checkIsAuthenticated,
-  CUSTOMER_LOGIN_PATH,
   CUSTOMER_ORDER_DETAILS_PATH,
   CUSTOMER_ORDERS_PATH,
   CUSTOMER_RETURN_DETAILS_PATH,
   UPS_TRACKING_URL,
   rootLink,
-  getProductLink,
-} from '../../scripts/commerce.js';
-
-// Initialize
-import '../../scripts/initializers/account.js';
+} from '../../scripts/core/routes.js';
+import { productLinkFromItem } from '../../scripts/ui/slots/product-link.js';
+import { linkedImageSlot } from '../../scripts/ui/slots/image-slot.js';
+import { mountDropinBlock } from '../../scripts/ui/dropin-block.js';
 
 export default async function decorate(block) {
   const { 'minified-view': minifiedViewConfig = 'false' } = readBlockConfig(block);
-  const createProductLink = (productData) => {
-    // If product is null/undefined, it's been deleted from catalog
-    if (!productData?.product) {
-      return rootLink('#');
-    }
 
-    // Product exists in catalog, validate it has the required fields
-    const { urlKey, topLevelSku } = productData;
-    if (urlKey && topLevelSku) {
-      return getProductLink(urlKey, topLevelSku);
-    }
-    return rootLink('#');
-  };
+  // If product is null/undefined, it's been deleted from catalog
+  const createProductLink = (productData) => (
+    productData?.product ? productLinkFromItem(productData) : rootLink('#')
+  );
 
-  if (!checkIsAuthenticated()) {
-    window.location.href = rootLink(CUSTOMER_LOGIN_PATH);
-  } else {
-    await accountRenderer.render(OrdersList, {
+  await mountDropinBlock(block, {
+    capability: 'account',
+    guard: 'auth',
+    render: () => accountRenderer.render(OrdersList, {
       minifiedView: minifiedViewConfig === 'true',
       routeTracking: ({ carrier, number }) => {
         if (carrier === 'ups') {
@@ -48,23 +36,8 @@ export default async function decorate(block) {
       routeReturnDetails: ({ orderNumber, returnNumber }) => rootLink(`${CUSTOMER_RETURN_DETAILS_PATH}?orderRef=${orderNumber}&returnRef=${returnNumber}`),
       routeOrderProduct: createProductLink,
       slots: {
-        OrderItemImage: (ctx) => {
-          const { data, defaultImageProps } = ctx;
-          const anchor = document.createElement('a');
-          anchor.href = createProductLink(ctx.data);
-
-          tryRenderAemAssetsImage(ctx, {
-            alias: data.product.sku,
-            imageProps: defaultImageProps,
-            wrapper: anchor,
-
-            params: {
-              width: defaultImageProps.width,
-              height: defaultImageProps.height,
-            },
-          });
-        },
+        OrderItemImage: linkedImageSlot((ctx) => createProductLink(ctx.data)),
       },
-    })(block);
-  }
+    })(block),
+  });
 }

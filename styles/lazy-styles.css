@@ -1,1 +1,97 @@
 /* add global styles that can be loaded post LCP here */
+
+/*
+ * ==========================================================================
+ * SPORTS EMOTION — CSS below-the-fold (post-LCP)
+ * ==========================================================================
+ * Estilos de marca que no son necesarios para el primer render: gradiente del
+ * CTA principal, estados hover elaborados, tamaño de icon-buttons, etc.
+ * Regla: solo tokens (var(--…)), nunca valores literales de marca fuera del
+ * bloque THEME OVERRIDES de styles.css. Selectores siempre scoped bajo
+ * .dropin-design para no pisar estilos de bloques.
+ * ==========================================================================
+ */
+
+/* --- CTA principal (Add to Cart): gradiente de marca, altura 44px, padding 10px --- */
+.dropin-design .dropin-button.dropin-button--primary {
+  background-image: var(--gradient-cta-primary);
+  background-color: transparent;
+  color: var(--color-neutral-900);
+  height: 44px;
+  min-height: 44px;
+  padding: 10px var(--spacing-medium);
+  border: none;
+  border-radius: var(--shape-border-radius-1);
+  font-family: var(--type-base-font-family);
+  transition:
+    filter var(--motion-duration-hover) var(--motion-easing),
+    transform var(--motion-duration-press) var(--motion-easing);
+}
+
+.dropin-design .dropin-button.dropin-button--primary:hover {
+  filter: brightness(0.98);
+}
+
+.dropin-design .dropin-button.dropin-button--primary:active {
+  transform: translateY(1px);
+}
+
+/* --- icon-button 36×36 (wishlist, switchers) --- */
+.dropin-design .dropin-iconButton {
+  height: 36px;
+  width: 36px;
+  min-height: 36px;
+  min-width: 36px;
+  border-radius: var(--shape-border-radius-pill);
+}
+
+/* --- Campo de opciones (tallas / suelas): lista y chips --- */
+.dropin-design .pdp-swatches__options {
+  gap: var(--spacing-xxxsmall);
+}
+
+/* Estados del chip/talla (patrón §9 del design system):
+   hover/focus engorda el borde 1→4px sin cambiar color; pressed invierte
+   fondo/texto; disabled apaga borde y texto. */
+.dropin-design .pdp-swatches__field label,
+.dropin-design .pdp-swatches__field input[type='checkbox'] + span {
+  border: 1px solid var(--color-neutral-900);
+  color: var(--color-neutral-900);
+  background: var(--color-neutral-0);
+  border-radius: var(--shape-border-radius-1);
+  padding: var(--spacing-xsmall) var(--spacing-small-minus);
+  transition:
+    border-width var(--motion-duration-hover) var(--motion-easing),
+    background-color var(--motion-duration-hover) var(--motion-easing),
+    color var(--motion-duration-hover) var(--motion-easing);
+}
+
+.dropin-design .pdp-swatches__field label:hover,
+.dropin-design .pdp-swatches__field input[type='checkbox'] + span:hover {
+  border-width: var(--state-focus-border-width);
+}
+
+.dropin-design .pdp-swatches__field label:active,
+.dropin-design .pdp-swatches__field input[type='checkbox']:checked + span {
+  background-color: var(--state-pressed-bg);
+  color: var(--state-pressed-fg);
+  border-width: var(--state-focus-border-width);
+}
+
+/* stylelint-disable-next-line no-descending-specificity -- :has gana sobre
+   :hover/:active para que un talla deshabilitada no reaccione. */
+.dropin-design .pdp-swatches__field input:disabled + span,
+.dropin-design .pdp-swatches__field label:has(input:disabled) {
+  border-color: var(--state-disabled-border);
+  color: var(--state-disabled-fg);
+  cursor: not-allowed;
+}
+
+/* --- Respeto a prefers-reduced-motion --- */
+@media (prefers-reduced-motion: reduce) {
+  .dropin-design .dropin-button.dropin-button--primary,
+  .dropin-design .pdp-swatches__field label,
+  .dropin-design .pdp-swatches__field input[type='checkbox'] + span {
+    transition: none;
+  }
+}

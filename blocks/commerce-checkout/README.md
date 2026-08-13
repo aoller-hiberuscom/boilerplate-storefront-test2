@@ -4,6 +4,23 @@
 
 The Commerce Checkout block provides a comprehensive **one-page checkout** experience with dynamic form handling, payment processing, address management, and order placement. It integrates multiple dropin containers for authentication, cart management, payment services, and order processing with dynamic UI state management and validation.
 
+### Architecture (refactored)
+
+The block is composed of an orchestrator plus one module per functional section:
+
+- `commerce-checkout.js` — orchestrator: layout, cross-section wiring (events, place-order handlers) and mount order (place-order first, remaining sections in parallel).
+- `layout.js` — single source of truth for the checkout DOM (CSS classes + `data-ref` attributes, resolved via `scripts/ui/layout.js`).
+- `sections/shell.js` — page frame: heading, merged-cart banner, server error, out-of-stock.
+- `sections/login.js` — guest login form (checkout + auth dropins + modal).
+- `sections/addresses.js` — shipping/billing addresses (guest form and customer address selector unified and parameterized by address type), bill-to-shipping checkbox, guest/customer/virtual mode switching, form refs and skeletons.
+- `sections/delivery.js` — shipping methods.
+- `sections/payment.js` — payment methods incl. Payment Services credit card (owns `creditCardFormRef`).
+- `sections/summary.js` — order summary (estimate shipping, coupons, gift cards), cart summary list and gift options.
+- `sections/place-order.js` — place order button and terms & conditions.
+- `constants.js` / `utils.js` — form names, storage keys, timings; spinner, modal, order details URL.
+
+Commerce capabilities are declared with `ensureCapability()` from `scripts/dropins/registry.js` (account, checkout, order, payment-services).
+
 ## Integration
 
 <!-- ### Block Configuration

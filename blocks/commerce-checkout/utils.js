@@ -1,13 +1,15 @@
-/* eslint-disable import/no-unresolved */
+/**
+ * utils.js — Utilidades del block de checkout: spinner de overlay, modal y
+ * construcción de la URL de detalles de pedido.
+ */
 import { ProgressSpinner, provider as UI } from '@dropins/tools/components.js';
-import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
-import { ORDER_DETAILS_PATH, rootLink } from '../../scripts/commerce.js';
-import { getUserTokenCookie } from '../../scripts/initializers/index.js';
+import { ORDER_DETAILS_PATH, rootLink } from '../../scripts/core/routes.js';
+import { getUserTokenCookie } from '../../scripts/core/auth.js';
 import createModal from '../modal/modal.js';
 
 /**
- * Displays an overlay spinner in the specified container
- * @param {Object} loaderRef - Ref object to store the spinner component
+ * Displays an overlay spinner in the specified container.
+ * @param {{ current: object|null }} loaderRef - Ref object to store the spinner component
  * @param {HTMLElement} $loader - DOM element to render the spinner in
  */
 export const displayOverlaySpinner = async (loaderRef, $loader) => {
@@ -19,8 +21,8 @@ export const displayOverlaySpinner = async (loaderRef, $loader) => {
 };
 
 /**
- * Removes the overlay spinner and cleans up references
- * @param {Object} loaderRef - Ref object containing the spinner component
+ * Removes the overlay spinner and cleans up references.
+ * @param {{ current: object|null }} loaderRef - Ref object containing the spinner component
  * @param {HTMLElement} $loader - DOM element containing the spinner
  */
 export const removeOverlaySpinner = (loaderRef, $loader) => {
@@ -35,7 +37,7 @@ export const removeOverlaySpinner = (loaderRef, $loader) => {
 let modal;
 
 /**
- * Shows a modal with the specified content
+ * Shows a modal with the specified content.
  * @param {HTMLElement} content - DOM element to display in the modal
  */
 export const showModal = async (content) => {
@@ -44,7 +46,7 @@ export const showModal = async (content) => {
 };
 
 /**
- * Removes the currently displayed modal and cleans up references
+ * Removes the currently displayed modal and cleans up references.
  */
 export const removeModal = () => {
   if (!modal) return;
@@ -53,26 +55,9 @@ export const removeModal = () => {
 };
 
 /**
- * Renders AEM asset images for gift option swatches
- * @param {Object} ctx - The context object containing imageSwatchContext and defaultImageProps
- */
-export function swatchImageSlot(ctx) {
-  const { imageSwatchContext, defaultImageProps } = ctx;
-  tryRenderAemAssetsImage(ctx, {
-    alias: imageSwatchContext.label,
-    imageProps: defaultImageProps,
-    wrapper: document.createElement('span'),
-    params: {
-      width: defaultImageProps.width,
-      height: defaultImageProps.height,
-    },
-  });
-}
-
-/**
- * Builds the order details URL based on authentication status
- * @param {Object} orderData - Order data containing number and token
- * @param {string} orderDetailsPath - Path to the order details page
+ * Builds the order details URL based on authentication status.
+ * @param {object} orderData - Order data containing number and token
+ * @param {string} [orderDetailsPath] - Path to the order details page
  * @returns {string} The constructed order details URL
  */
 export function buildOrderDetailsUrl(orderData, orderDetailsPath = ORDER_DETAILS_PATH) {

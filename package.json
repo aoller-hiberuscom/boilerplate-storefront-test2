@@ -1,14 +1,19 @@
 {
-  "name": "@adobe/aem-boilerplate-commerce",
+  "name": "@hiberus/sports-emotion-storefront",
   "private": true,
-  "version": "9.0.0",
-  "description": "Starter project for Adobe Commerce on Edge Delivery Services",
+  "version": "1.0.0",
+  "description": "Sports Emotion storefront — Adobe Commerce on Edge Delivery Services (base: aem-boilerplate-commerce v9)",
   "scripts": {
     "lint:js": "eslint .",
     "lint:css": "stylelint \"blocks/**/*.css\" \"styles/*.css\"",
     "lint": "npm run lint:js && npm run lint:css",
     "lint:fix": "npm run lint:js -- --fix && npm run lint:css -- --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run lint && npm run typecheck && npm run test",
     "start": "aem up",
+    "dev": "aem up --no-open --forward-browser-logs --url https://main--aem-boilerplate-commerce--hlxsites.aem.page",
     "install:dropins": "node build.mjs && node postinstall.js",
     "postinstall": "npm run install:dropins",
     "postupdate": "npm run install:dropins",
@@ -20,15 +25,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hlxsites/aem-boilerplate-commerce.git"
+    "url": "git+https://github.com/hiberus-magento/sports-emotion-storefront.git"
   },
-  "author": "Adobe",
+  "author": "Hiberus",
   "license": "Apache License 2.0",
   "bugs": {
-    "url": "https://github.com/hlxsites/aem-boilerplate-commerce/issues"
+    "url": "https://github.com/hiberus-magento/sports-emotion-storefront/issues"
   },
-  "homepage": "https://github.com/hlxsites/aem-boilerplate-commerce#readme",
+  "homepage": "https://github.com/hiberus-magento/sports-emotion-storefront#readme",
   "devDependencies": {
+    "@adobe-commerce/commerce-extensibility-tools": "^3.4.0",
     "@adobe/aem-cli": "^16.5.8",
     "@babel/eslint-parser": "7.29.7",
     "@dropins/build-tools": "1.2.0",
@@ -36,26 +42,29 @@
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-plugin-import": "2.32.0",
     "husky": "^9.1.7",
+    "jsdom": "^26.0.0",
     "merge-json-cli": "^1.0.4",
     "npm-run-all": "^4.1.5",
     "stylelint": "17.12.0",
-    "stylelint-config-standard": "40.0.0"
+    "stylelint-config-standard": "40.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.0"
   },
   "dependencies": {
     "@adobe/adobe-client-data-layer": "^3.0.1",
-    "@adobe/magento-storefront-event-collector": "^1.17.0",
-    "@adobe/magento-storefront-events-sdk": "^1.17.0",
-    "@dropins/storefront-account": "^4.1.0",
-    "@dropins/storefront-auth": "^4.0.1",
-    "@dropins/storefront-cart": "^3.3.1",
-    "@dropins/storefront-checkout": "^3.3.1",
-    "@dropins/storefront-order": "^4.0.1",
+    "@adobe/magento-storefront-event-collector": "^1.15.0",
+    "@adobe/magento-storefront-events-sdk": "^1.15.0",
+    "@dropins/storefront-account": "^4.0.0",
+    "@dropins/storefront-auth": "^4.0.0",
+    "@dropins/storefront-cart": "^3.3.0",
+    "@dropins/storefront-checkout": "^3.3.0",
+    "@dropins/storefront-order": "^4.0.0",
     "@dropins/storefront-payment-services": "^3.1.2",
-    "@dropins/storefront-pdp": "^3.3.1",
-    "@dropins/storefront-personalization": "^3.2.1",
+    "@dropins/storefront-pdp": "^3.2.0",
+    "@dropins/storefront-personalization": "^3.2.0",
     "@dropins/storefront-product-discovery": "^3.1.1",
     "@dropins/storefront-recommendations": "^4.0.4",
-    "@dropins/storefront-wishlist": "^3.4.0",
+    "@dropins/storefront-wishlist": "^3.3.0",
     "@dropins/tools": "^1.9.0"
   },
   "overrides": {

@@ -1,12 +1,11 @@
-import {
-  InLineAlert,
-  Icon,
-  Button,
-  provider as UI,
-} from '@dropins/tools/components.js';
-import { h } from '@dropins/tools/preact.js';
-import { events } from '@dropins/tools/event-bus.js';
-import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
+/**
+ * blocks/product-details/product-details.js — Block de detalle de producto (PDP).
+ *
+ * Responsabilidad: declarar el layout (createLayout con data-ref), montar los
+ * containers del dropin de PDP (galerías, header, precio, opciones…) y el
+ * toggle de wishlist, y registrar los listeners del event bus delegando la
+ * lógica en add-to-cart.js, gallery.js y scripts/domain/seo.js.
+ */
 import * as pdpApi from '@dropins/storefront-pdp/api.js';
 import { render as pdpRendered } from '@dropins/storefront-pdp/render.js';
 import { render as wishlistRender } from '@dropins/storefront-wishlist/render.js';
@@ -25,55 +24,27 @@ import ProductAttributes from '@dropins/storefront-pdp/containers/ProductAttribu
 import ProductGallery from '@dropins/storefront-pdp/containers/ProductGallery.js';
 import ProductGiftCardOptions from '@dropins/storefront-pdp/containers/ProductGiftCardOptions.js';
 
-// Libs
+// Capas propias
+import { rootLink } from '../../scripts/core/routes.js';
+import { EVENTS, on, lastPayload } from '../../scripts/core/events.js';
+import { fetchPlaceholders } from '../../scripts/core/i18n.js';
 import {
-  rootLink,
-  setJsonLd,
-  fetchPlaceholders,
-  getProductLink,
-} from '../../scripts/commerce.js';
+  setJsonLdProduct,
+  setMetaTags,
+  isProductPrerendered,
+} from '../../scripts/domain/seo.js';
+import { ensureCapability } from '../../scripts/dropins/registry.js';
+import { createLayout } from '../../scripts/ui/layout.js';
 
-// Initializers
-import { IMAGES_SIZES } from '../../scripts/initializers/pdp.js';
-import '../../scripts/initializers/cart.js';
-import '../../scripts/initializers/wishlist.js';
-
-/**
- * Checks if the page has prerendered product JSON-LD data
- * @returns {boolean} True if product JSON-LD exists and contains @type=Product
- */
-function isProductPrerendered() {
-  const jsonLdScript = document.querySelector('script[type="application/ld+json"]');
-
-  if (!jsonLdScript?.textContent) {
-    return false;
-  }
-
-  try {
-    const jsonLd = JSON.parse(jsonLdScript.textContent);
-    return jsonLd?.['@type'] === 'Product';
-  } catch (error) {
-    console.debug('Failed to parse JSON-LD:', error);
-    return false;
-  }
-}
-
-// Function to update the Add to Cart button text
-function updateAddToCartButtonText(addToCartInstance, inCart, labels) {
-  const buttonText = inCart
-    ? labels.Global?.UpdateProductInCart
-    : labels.Global?.AddProductToCart;
-  if (addToCartInstance) {
-    addToCartInstance.setProps((prev) => ({
-      ...prev,
-      children: buttonText,
-    }));
-  }
-}
+// Módulos del block
+import { createAddToCartArea } from './add-to-cart.js';
+import { getGalleryConfigs, swatchImageSlot } from './gallery.js';
 
 /**
  * Formats numeric attribute values for display (e.g., "10.000000" → "10").
  * Non-numeric values are returned as-is.
+ * @param {string} value Valor del atributo
+ * @returns {string} Valor formateado
  */
 function formatNumericAttributeValue(value) {
   const trimmed = value.trim();
@@ -81,8 +52,20 @@ function formatNumericAttributeValue(value) {
   return new Intl.NumberFormat(document.documentElement.lang).format(Number(trimmed));
 }
 
+/**
+ * Decora el block de PDP: capacidades, layout, containers y listeners.
+ * @param {HTMLElement} block
+ * @returns {Promise<void>}
+ */
 export default async function decorate(block) {
-  const eventProduct = events.lastPayload('pdp/data') ?? null;
+  // Capacidades commerce que requiere este block
+  await Promise.all([
+    ensureCapability('pdp'),
+    ensureCapability('cart'),
+    ensureCapability('wishlist'),
+  ]);
+
+  const eventProduct = lastPayload(EVENTS.PDP_DATA) ?? null;
   // bug: the pdp sends an object with event data even if product is not found.
   const product = eventProduct?.sku ? eventProduct : null;
 
@@ -92,76 +75,36 @@ export default async function decorate(block) {
   const urlParams = new URLSearchParams(window.location.search);
   const itemUidFromUrl = urlParams.get('itemUid');
 
-  // State to track if we are in update mode
-  let isUpdateMode = false;
-
-  // State to track if the current product/variant is out of stock
-  let isOutOfStock = false;
-
   // Layout
-  const fragment = document.createRange().createContextualFragment(`
-    <div class="product-details__alert"></div>
+  const { root, refs } = createLayout(`
+    <div class="product-details__alert" data-ref="alert"></div>
     <div class="product-details__wrapper">
       <div class="product-details__left-column">
-        <div class="product-details__gallery"></div>
+        <div class="product-details__gallery" data-ref="gallery"></div>
       </div>
       <div class="product-details__right-column">
-        <div class="product-details__header"></div>
-        <div class="product-details__price"></div>
-        <div class="product-details__gallery"></div>
-        <div class="product-details__short-description"></div>
-        <div class="product-details__gift-card-options"></div>
+        <div class="product-details__header" data-ref="header"></div>
+        <div class="product-details__price" data-ref="price"></div>
+        <div class="product-details__gallery" data-ref="galleryMobile"></div>
+        <div class="product-details__short-description" data-ref="shortDescription"></div>
+        <div class="product-details__gift-card-options" data-ref="giftCardOptions"></div>
         <div class="product-details__configuration">
-          <div class="product-details__options"></div>
-          <div class="product-details__quantity"></div>
+          <div class="product-details__options" data-ref="options"></div>
+          <div class="product-details__quantity" data-ref="quantity"></div>
           <div class="product-details__buttons">
-            <div class="product-details__buttons__add-to-cart"></div>
-            <div class="product-details__buttons__add-to-wishlist"></div>
+            <div class="product-details__buttons__add-to-cart" data-ref="addToCart"></div>
+            <div class="product-details__buttons__add-to-wishlist" data-ref="wishlistToggle"></div>
           </div>
         </div>
-        <div class="product-details__description"></div>
-        <div class="product-details__attributes"></div>
+        <div class="product-details__description" data-ref="description"></div>
+        <div class="product-details__attributes" data-ref="attributes"></div>
       </div>
     </div>
   `);
 
-  const $alert = fragment.querySelector('.product-details__alert');
-  const $gallery = fragment.querySelector('.product-details__gallery');
-  const $header = fragment.querySelector('.product-details__header');
-  const $price = fragment.querySelector('.product-details__price');
-  const $galleryMobile = fragment.querySelector('.product-details__right-column .product-details__gallery');
-  const $shortDescription = fragment.querySelector('.product-details__short-description');
-  const $options = fragment.querySelector('.product-details__options');
-  const $quantity = fragment.querySelector('.product-details__quantity');
-  const $giftCardOptions = fragment.querySelector('.product-details__gift-card-options');
-  const $addToCart = fragment.querySelector('.product-details__buttons__add-to-cart');
-  const $wishlistToggleBtn = fragment.querySelector('.product-details__buttons__add-to-wishlist');
-  const $description = fragment.querySelector('.product-details__description');
-  const $attributes = fragment.querySelector('.product-details__attributes');
+  block.replaceChildren(root);
 
-  block.replaceChildren(fragment);
-
-  const gallerySlots = {
-    CarouselThumbnail: (ctx) => {
-      if (ctx.mediaType === 'image') {
-        tryRenderAemAssetsImage(ctx, {
-          ...imageSlotConfig(ctx),
-          wrapper: document.createElement('span'),
-        });
-      }
-    },
-
-    CarouselMainImage: (ctx) => {
-      if (ctx.mediaType === 'image') {
-        tryRenderAemAssetsImage(ctx, {
-          ...imageSlotConfig(ctx),
-        });
-      }
-    },
-  };
-
-  // Alert
-  let inlineAlert = null;
+  const galleryConfigs = getGalleryConfigs();
   const routeToWishlist = rootLink('/wishlist');
 
   const [
@@ -178,176 +121,62 @@ export default async function decorate(block) {
     wishlistToggleBtn,
   ] = await Promise.all([
     // Gallery (Mobile)
-    pdpRendered.render(ProductGallery, {
-      controls: 'dots',
-      arrows: true,
-      peak: false,
-      gap: 'small',
-      loop: false,
-      videos: true, // Display videos if available
-      imageParams: {
-        ...IMAGES_SIZES,
-      },
-
-      slots: gallerySlots,
-    })($galleryMobile),
+    pdpRendered.render(ProductGallery, galleryConfigs.mobile)(refs.galleryMobile),
 
     // Gallery (Desktop)
-    pdpRendered.render(ProductGallery, {
-      controls: 'thumbnailsColumn',
-      arrows: true,
-      peak: true,
-      gap: 'small',
-      loop: false,
-      videos: true, // Display videos if available
-      imageParams: {
-        ...IMAGES_SIZES,
-      },
-
-      slots: gallerySlots,
-    })($gallery),
+    pdpRendered.render(ProductGallery, galleryConfigs.desktop)(refs.gallery),
 
     // Header
-    pdpRendered.render(ProductHeader, {})($header),
+    pdpRendered.render(ProductHeader, {})(refs.header),
 
     // Price
-    pdpRendered.render(ProductPrice, {})($price),
+    pdpRendered.render(ProductPrice, {})(refs.price),
 
     // Short Description
-    pdpRendered.render(ProductShortDescription, {})($shortDescription),
+    pdpRendered.render(ProductShortDescription, {})(refs.shortDescription),
 
     // Configuration - Swatches
     pdpRendered.render(ProductOptions, {
       hideSelectedValue: false,
       slots: {
-        SwatchImage: (ctx) => {
-          tryRenderAemAssetsImage(ctx, {
-            ...imageSlotConfig(ctx),
-            wrapper: document.createElement('span'),
-          });
-        },
+        SwatchImage: swatchImageSlot,
       },
-    })($options),
+    })(refs.options),
 
     // Configuration  Quantity
-    pdpRendered.render(ProductQuantity, {})($quantity),
+    pdpRendered.render(ProductQuantity, {})(refs.quantity),
 
     // Configuration  Gift Card Options
-    pdpRendered.render(ProductGiftCardOptions, {})($giftCardOptions),
+    pdpRendered.render(ProductGiftCardOptions, {})(refs.giftCardOptions),
 
     // Description
-    pdpRendered.render(ProductDescription, {})($description),
+    pdpRendered.render(ProductDescription, {})(refs.description),
 
     // Attributes
     pdpRendered.render(ProductAttributes, {
       formatValue: formatNumericAttributeValue,
-    })($attributes),
+    })(refs.attributes),
 
     // Wishlist button - WishlistToggle Container
     wishlistRender.render(WishlistToggle, {
       product,
-    })($wishlistToggleBtn),
+    })(refs.wishlistToggle),
   ]);
 
   // Configuration – Button - Add to Cart
-  const addToCart = await UI.render(Button, {
-    children: labels.Global?.AddProductToCart,
-    icon: h(Icon, { source: 'Cart' }),
-    onClick: async () => {
-      const buttonActionText = isUpdateMode
-        ? labels.Global?.UpdatingInCart
-        : labels.Global?.AddingToCart;
-      try {
-        addToCart.setProps((prev) => ({
-          ...prev,
-          children: buttonActionText,
-          disabled: true,
-        }));
-
-        // get the current selection values
-        const values = pdpApi.getProductConfigurationValues();
-        const valid = pdpApi.isProductConfigurationValid();
-
-        // add or update the product in the cart
-        if (valid) {
-          if (isUpdateMode) {
-            // --- Update existing item ---
-            const { updateProductsFromCart } = await import(
-              '@dropins/storefront-cart/api.js'
-            );
-
-            await updateProductsFromCart([{ ...values, uid: itemUidFromUrl }]);
-
-            // --- START REDIRECT ON UPDATE ---
-            const updatedSku = values?.sku;
-            if (updatedSku) {
-              const cartRedirectUrl = new URL(
-                rootLink('/cart'),
-                window.location.origin,
-              );
-              cartRedirectUrl.searchParams.set('itemUid', itemUidFromUrl);
-              window.location.href = cartRedirectUrl.toString();
-            } else {
-              // Fallback if SKU is somehow missing (shouldn't happen in normal flow)
-              console.warn(
-                'Could not retrieve SKU for updated item. Redirecting to cart without parameter.',
-              );
-              window.location.href = rootLink('/cart');
-            }
-            return;
-          }
-          // --- Add new item ---
-          const { addProductsToCart } = await import(
-            '@dropins/storefront-cart/api.js'
-          );
-          await addProductsToCart([{ ...values }]);
-        }
-
-        // reset any previous alerts if successful
-        inlineAlert?.remove();
-      } catch (error) {
-        // add alert message
-        inlineAlert = await UI.render(InLineAlert, {
-          heading: 'Error',
-          description: error.message,
-          icon: h(Icon, { source: 'Warning' }),
-          'aria-live': 'assertive',
-          role: 'alert',
-          onDismiss: () => {
-            inlineAlert.remove();
-          },
-        })($alert);
-
-        // Scroll the alertWrapper into view
-        $alert.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-      } finally {
-        // Reset button text using the helper function which respects the current mode
-        updateAddToCartButtonText(addToCart, isUpdateMode, labels);
-        // Re-enable button, unless the current variant is out of stock
-        addToCart.setProps((prev) => ({
-          ...prev,
-          disabled: isOutOfStock,
-        }));
-      }
-    },
-  })($addToCart);
+  const addToCartArea = await createAddToCartArea({
+    refs,
+    labels,
+    itemUid: itemUidFromUrl,
+  });
 
   // Lifecycle Events
-  events.on('pdp/data', (data) => {
-    isOutOfStock = data?.inStock === false;
-    addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock }));
-  }, { eager: true });
+  on(EVENTS.PDP_DATA, addToCartArea.onProductData, { eager: true });
 
-  events.on('pdp/valid', (valid) => {
-    // update add to cart button disabled state based on product selection validity and stock status
-    addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock || !valid }));
-  }, { eager: true });
+  on(EVENTS.PDP_VALID, addToCartArea.onValidityChange, { eager: true });
 
   // Handle option changes
-  events.on('pdp/values', () => {
+  on(EVENTS.PDP_VALUES, () => {
     if (wishlistToggleBtn) {
       const configValues = pdpApi.getProductConfigurationValues();
 
@@ -367,19 +196,19 @@ export default async function decorate(block) {
     }
   }, { eager: true });
 
-  events.on('wishlist/alert', ({ action, item }) => {
+  on(EVENTS.WISHLIST_ALERT, ({ action, item }) => {
     wishlistRender.render(WishlistAlert, {
       action,
       item,
       routeToWishlist,
-    })($alert);
+    })(refs.alert);
 
     setTimeout(() => {
-      $alert.innerHTML = '';
+      refs.alert.innerHTML = '';
     }, 5000);
 
     setTimeout(() => {
-      $alert.scrollIntoView({
+      refs.alert.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
       });
@@ -387,26 +216,10 @@ export default async function decorate(block) {
   });
 
   // --- Add new event listener for cart/data ---
-  events.on(
-    'cart/data',
-    (cartData) => {
-      let itemIsInCart = false;
-      if (itemUidFromUrl && cartData?.items) {
-        itemIsInCart = cartData.items.some(
-          (item) => item.uid === itemUidFromUrl,
-        );
-      }
-      // Set the update mode state
-      isUpdateMode = itemIsInCart;
-
-      // Update button text based on whether the item is in the cart
-      updateAddToCartButtonText(addToCart, itemIsInCart, labels);
-    },
-    { eager: true },
-  );
+  on(EVENTS.CART_DATA, addToCartArea.onCartData, { eager: true });
 
   // Set JSON-LD and Meta Tags
-  events.on('aem/lcp', () => {
+  on(EVENTS.LCP, () => {
     const isPrerendered = isProductPrerendered();
     if (product && !isPrerendered) {
       setJsonLdProduct(product);
@@ -416,150 +229,4 @@ export default async function decorate(block) {
   }, { eager: true });
 
   return Promise.resolve();
-}
-
-async function setJsonLdProduct(product) {
-  const {
-    name,
-    inStock,
-    description,
-    sku,
-    urlKey,
-    price,
-    priceRange,
-    images,
-    attributes,
-  } = product;
-  const amount = priceRange?.minimum?.final?.amount || price?.final?.amount;
-  const brand = attributes?.find((attr) => attr.name === 'brand');
-
-  // get variants
-  const { data } = await pdpApi.fetchGraphQl(`
-    query GET_PRODUCT_VARIANTS($sku: String!) {
-      variants(sku: $sku) {
-        variants {
-          product {
-            sku
-            name
-            inStock
-            images(roles: ["image"]) {
-              url
-            }
-            ...on SimpleProductView {
-              price {
-                final { amount { currency value } }
-              }
-            }
-          }
-        }
-      }
-    }
-  `, {
-    method: 'GET',
-    variables: { sku },
-  });
-
-  const variants = data?.variants?.variants || [];
-
-  const ldJson = {
-    '@context': 'http://schema.org',
-    '@type': 'Product',
-    name,
-    description,
-    image: images[0]?.url,
-    offers: [],
-    productID: sku,
-    brand: {
-      '@type': 'Brand',
-      name: brand?.value,
-    },
-    url: new URL(getProductLink(urlKey, sku), window.location),
-    sku,
-    '@id': new URL(getProductLink(urlKey, sku), window.location),
-  };
-
-  if (variants.length > 1) {
-    ldJson.offers.push(...variants.map((variant) => ({
-      '@type': 'Offer',
-      name: variant.product.name,
-      image: variant.product.images[0]?.url,
-      price: variant.product.price.final.amount.value,
-      priceCurrency: variant.product.price.final.amount.currency,
-      availability: variant.product.inStock ? 'http://schema.org/InStock' : 'http://schema.org/OutOfStock',
-      sku: variant.product.sku,
-    })));
-  } else {
-    ldJson.offers.push({
-      '@type': 'Offer',
-      price: amount?.value,
-      priceCurrency: amount?.currency,
-      availability: inStock ? 'http://schema.org/InStock' : 'http://schema.org/OutOfStock',
-    });
-  }
-
-  setJsonLd(ldJson, 'product');
-}
-
-function createMetaTag(property, content, type) {
-  if (!property || !type) {
-    return;
-  }
-  let meta = document.head.querySelector(`meta[${type}="${property}"]`);
-  if (meta) {
-    if (!content) {
-      meta.remove();
-      return;
-    }
-    meta.setAttribute(type, property);
-    meta.setAttribute('content', content);
-    return;
-  }
-  if (!content) {
-    return;
-  }
-  meta = document.createElement('meta');
-  meta.setAttribute(type, property);
-  meta.setAttribute('content', content);
-  document.head.appendChild(meta);
-}
-
-function setMetaTags(product) {
-  if (!product?.sku) {
-    return;
-  }
-
-  const price = product.prices.final.minimumAmount ?? product.prices.final.amount;
-
-  createMetaTag('title', product.metaTitle || product.name, 'name');
-  createMetaTag('description', product.metaDescription, 'name');
-  createMetaTag('keywords', product.metaKeyword, 'name');
-
-  createMetaTag('og:type', 'product', 'property');
-  createMetaTag('og:description', product.shortDescription, 'property');
-  createMetaTag('og:title', product.metaTitle || product.name, 'property');
-  createMetaTag('og:url', window.location.href, 'property');
-  const mainImage = product?.images?.filter((image) => image.roles.includes('thumbnail'))[0];
-  const metaImage = mainImage?.url || product?.images[0]?.url;
-  createMetaTag('og:image', metaImage, 'property');
-  createMetaTag('og:image:secure_url', metaImage, 'property');
-  createMetaTag('product:price:amount', price.value, 'property');
-  createMetaTag('product:price:currency', price.currency, 'property');
-}
-
-/**
- * Returns the configuration for an image slot.
- * @param ctx - The context of the slot.
- * @returns The configuration for the image slot.
- */
-function imageSlotConfig(ctx) {
-  const { data, defaultImageProps } = ctx;
-  return {
-    alias: data.sku,
-    imageProps: defaultImageProps,
-
-    params: {
-      width: defaultImageProps.width,
-      height: defaultImageProps.height,
-    },
-  };
 }

@@ -1,67 +1,116 @@
-import { getCookie } from '@dropins/tools/lib.js';
+/**
+ * blocks/header/renderAuthCombine.js — Interfaz de auth "combine" del header.
+ *
+ * Responsabilidad:
+ *  - Modal de login/registro/reset (#auth-combine-modal) enlazado desde el
+ *    item "Account" del nav, con trap de foco y restauración del viewport.
+ *  - Notificaciones de éxito de sign-in y sign-up (factory compartida).
+ *
+ * Se conserva junto a renderAuthDropdown.js por decisión del cliente: ambas
+ * interfaces de autenticación conviven en el header.
+ */
 import { render as authRenderer } from '@dropins/storefront-auth/render.js';
 import { AuthCombine } from '@dropins/storefront-auth/containers/AuthCombine.js';
 import { SuccessNotification } from '@dropins/storefront-auth/containers/SuccessNotification.js';
 import * as authApi from '@dropins/storefront-auth/api.js';
-import { events } from '@dropins/tools/event-bus.js';
 import { Button, provider as UI } from '@dropins/tools/components.js';
 import {
   CUSTOMER_LOGIN_PATH,
   CUSTOMER_ACCOUNT_PATH,
   CUSTOMER_FORGOTPASSWORD_PATH,
   rootLink,
-  getProductLink,
-} from '../../scripts/commerce.js';
+} from '../../scripts/core/routes.js';
+import { EVENTS, on } from '../../scripts/core/events.js';
+import { COOKIES, getCookie } from '../../scripts/core/storage.js';
+import { fetchPlaceholders } from '../../scripts/core/i18n.js';
+
+const labels = await fetchPlaceholders();
+
+/** Lookup de placeholder con fallback idéntico al texto original en inglés. */
+const t = (key, fallback) => labels?.Global?.[key] ?? fallback;
+
+/**
+ * Estilos inline del botón secundario de las notificaciones de éxito.
+ * Se conservan (header.css no cubre este layout interno del dropin) pero
+ * centralizados en un único punto.
+ * @param {HTMLElement} element
+ */
+function applySecondaryActionStyles(element) {
+  element.style.display = 'flex';
+  element.style.justifyContent = 'center';
+  element.style.marginTop = 'var(--spacing-xsmall)';
+}
+
+/**
+ * Factory compartida del slot SuccessNotification (sign-in y sign-up
+ * duplicaban esta estructura: notificación + acción primaria + secundaria).
+ * @param {object} options
+ * @param {(ctx: object) => { headingText: string, messageText: string }} options.getLabels
+ * @param {{ label: string, onClick: Function }} options.primaryAction
+ * @param {{ label: string, onClick: Function }} options.secondaryAction
+ * @returns {(ctx: object) => void} Función de slot para el dropin de auth
+ */
+function createSuccessNotificationSlot({ getLabels, primaryAction, secondaryAction }) {
+  return (ctx) => {
+    const elem = document.createElement('div');
+
+    authRenderer.render(SuccessNotification, {
+      labels: getLabels(ctx),
+      slots: {
+        SuccessNotificationActions: (innerCtx) => {
+          const primaryBtn = document.createElement('div');
+
+          UI.render(Button, {
+            children: primaryAction.label,
+            onClick: primaryAction.onClick,
+          })(primaryBtn);
+
+          innerCtx.appendChild(primaryBtn);
+
+          const secondaryButton = document.createElement('div');
+          applySecondaryActionStyles(secondaryButton);
+
+          UI.render(Button, {
+            children: secondaryAction.label,
+            variant: 'tertiary',
+            onClick: secondaryAction.onClick,
+          })(secondaryButton);
+
+          innerCtx.appendChild(secondaryButton);
+        },
+      },
+    })(elem);
+
+    ctx.appendChild(elem);
+  };
+}
 
 const signInFormConfig = {
   renderSignUpLink: true,
   routeForgotPassword: () => rootLink(CUSTOMER_FORGOTPASSWORD_PATH),
   slots: {
-    SuccessNotification: (ctx) => {
-      const userName = ctx?.isSuccessful?.userName || '';
-
-      const elem = document.createElement('div');
-
-      authRenderer.render(SuccessNotification, {
-        labels: {
-          headingText: `Welcome ${userName}!`,
-          messageText: 'You have successfully logged in.',
+    SuccessNotification: createSuccessNotificationSlot({
+      getLabels: (ctx) => {
+        const userName = ctx?.isSuccessful?.userName || '';
+        return {
+          headingText: t('AuthSignInWelcome', 'Welcome {name}!').replace('{name}', userName),
+          messageText: t('AuthSignInSuccess', 'You have successfully logged in.'),
+        };
+      },
+      primaryAction: {
+        label: t('AuthMyAccount', 'My Account'),
+        onClick: () => {
+          window.location.href = rootLink(CUSTOMER_ACCOUNT_PATH);
         },
-        slots: {
-          SuccessNotificationActions: (innerCtx) => {
-            const primaryBtn = document.createElement('div');
-
-            UI.render(Button, {
-              children: 'My Account',
-
-              onClick: () => {
-                window.location.href = rootLink(CUSTOMER_ACCOUNT_PATH);
-              },
-            })(primaryBtn);
-
-            innerCtx.appendChild(primaryBtn);
-
-            const secondaryButton = document.createElement('div');
-            secondaryButton.style.display = 'flex';
-            secondaryButton.style.justifyContent = 'center';
-            secondaryButton.style.marginTop = 'var(--spacing-xsmall)';
-
-            UI.render(Button, {
-              children: 'Logout',
-              variant: 'tertiary',
-              onClick: async () => {
-                await authApi.revokeCustomerToken();
-                window.location.href = rootLink('/');
-              },
-            })(secondaryButton);
-
-            innerCtx.appendChild(secondaryButton);
-          },
+      },
+      secondaryAction: {
+        label: t('AuthLogout', 'Logout'),
+        onClick: async () => {
+          await authApi.revokeCustomerToken();
+          window.location.href = rootLink('/');
         },
-      })(elem);
-
-      ctx.appendChild(elem);
-    },
+      },
+    }),
   },
 };
 
@@ -70,48 +119,24 @@ const signUpFormConfig = {
   routeRedirectOnSignIn: () => rootLink(CUSTOMER_ACCOUNT_PATH),
   isAutoSignInEnabled: false,
   slots: {
-    SuccessNotification: (ctx) => {
-      const elem = document.createElement('div');
-
-      authRenderer.render(SuccessNotification, {
-        labels: {
-          headingText: 'Your account has been successfully created!',
-          messageText: 'You can login using sign-in page now.',
+    SuccessNotification: createSuccessNotificationSlot({
+      getLabels: () => ({
+        headingText: t('AuthSignUpSuccess', 'Your account has been successfully created!'),
+        messageText: t('AuthSignUpSuccessMessage', 'You can login using sign-in page now.'),
+      }),
+      primaryAction: {
+        label: t('AuthSignIn', 'Sign in'),
+        onClick: () => {
+          window.location.href = rootLink(CUSTOMER_LOGIN_PATH);
         },
-        slots: {
-          SuccessNotificationActions: (innerCtx) => {
-            const primaryBtn = document.createElement('div');
-
-            UI.render(Button, {
-              children: 'Sign in',
-
-              onClick: () => {
-                window.location.href = rootLink(CUSTOMER_LOGIN_PATH);
-              },
-            })(primaryBtn);
-
-            innerCtx.appendChild(primaryBtn);
-
-            const secondaryButton = document.createElement('div');
-            secondaryButton.style.display = 'flex';
-            secondaryButton.style.justifyContent = 'center';
-            secondaryButton.style.marginTop = 'var(--spacing-xsmall)';
-
-            UI.render(Button, {
-              children: 'Home',
-              variant: 'tertiary',
-              onClick: () => {
-                window.location.href = rootLink('/');
-              },
-            })(secondaryButton);
-
-            innerCtx.appendChild(secondaryButton);
-          },
+      },
+      secondaryAction: {
+        label: t('AuthHome', 'Home'),
+        onClick: () => {
+          window.location.href = rootLink('/');
         },
-      })(elem);
-
-      ctx.appendChild(elem);
-    },
+      },
+    }),
   },
 };
 
@@ -123,7 +148,7 @@ const onHeaderLinkClick = (element) => {
   const viewportMeta = document.querySelector('meta[name="viewport"]');
   const originalViewportContent = viewportMeta.getAttribute('content');
 
-  if (getCookie('auth_dropin_firstname')) {
+  if (getCookie(COOKIES.AUTH_FIRSTNAME)) {
     window.location.href = rootLink(CUSTOMER_ACCOUNT_PATH);
     return;
   }
@@ -206,8 +231,13 @@ const onHeaderLinkClick = (element) => {
   })(signInForm);
 };
 
-const renderAuthCombine = (navSections, toggleMenu) => {
-  if (getCookie('auth_dropin_firstname')) return;
+/**
+ * Engancha la interfaz auth "combine" al item "Account" del nav.
+ * @param {Element} navSections Sección .nav-sections del nav
+ * @param {Function} [closeMobileMenu] Callback para cerrar el menú móvil
+ */
+const renderAuthCombine = (navSections, closeMobileMenu) => {
+  if (getCookie(COOKIES.AUTH_FIRSTNAME)) return;
 
   const navListEl = navSections.querySelector('.default-content-wrapper > ul');
 
@@ -215,6 +245,11 @@ const renderAuthCombine = (navSections, toggleMenu) => {
     '.default-content-wrapper > ul > li',
   );
 
+  // TODO: DOM-scraping frágil. El item se localiza por el texto 'Account'
+  // porque el nav es contenido autorado (/nav) sin clases ni data-* estables
+  // para identificarlo; si el autor renombra o traduce el item, este enganche
+  // deja de funcionar. Se mantiene tal cual hasta que el fragment de nav
+  // exponga un selector estable.
   const accountLi = Array.from(listItems).find((li) => li.textContent.includes('Account'));
 
   if (accountLi) {
@@ -242,7 +277,7 @@ const renderAuthCombine = (navSections, toggleMenu) => {
         };
       }
 
-      events.on('authenticated', (isAuthenticated) => {
+      on(EVENTS.AUTHENTICATED, (isAuthenticated) => {
         const authCombineNavElement = document.querySelector(
           '.authCombineNavElement',
         );
@@ -263,21 +298,19 @@ const renderAuthCombine = (navSections, toggleMenu) => {
           popupElement.style.minWidth = '250px';
           if (headerLoginButton) {
             const spanElementText = headerLoginButton.querySelector('span');
-            spanElementText.textContent = `Hi, ${getCookie(
-              'auth_dropin_firstname',
-            )}`;
+            spanElementText.textContent = t('AuthGreeting', 'Hi, {name}')
+              .replace('{name}', getCookie(COOKIES.AUTH_FIRSTNAME));
           }
           popupMenuContainer.insertAdjacentHTML(
             'afterend',
             `<ul class="popupMenuUrlList">
-              <li><a href="${rootLink(CUSTOMER_ACCOUNT_PATH)}">My Account</a></li>
-              <li><a href="${getProductLink('hollister-backyard-sweatshirt', 'MH05')}">Product page</a></li>
-              <li><button class="logoutButton">Logout</button></li>
+              <li><a href="${rootLink(CUSTOMER_ACCOUNT_PATH)}">${t('AuthMyAccount', 'My Account')}</a></li>
+              <li><button class="logoutButton">${t('AuthLogout', 'Logout')}</button></li>
             </ul>`,
           );
         }
       });
-      toggleMenu?.();
+      closeMobileMenu?.();
     });
   }
 };
